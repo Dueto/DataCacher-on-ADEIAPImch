@@ -37,10 +37,12 @@
           {              
                 self.db.transaction(function(req)
                 {                     
-                      req.executeSql('SELECT * FROM DataSource WHERE db_server = "' + db_server + '" AND \n\
+                   req.executeSql('SELECT * FROM DataSource WHERE db_server = "' + db_server + '" AND \n\
                                                                   db_name = "' + db_name + '" AND \n\
                                                                   db_group = "' + db_group + '" AND \n\
                                                                     level = "' + self.level.window + '"', [], function (req, results)
+  //                 req.executeSql('SELECT * FROM DataSource WHERE db_server = ? AND db_name = ? AND db_group = ? AND level = ?', [db_server,db_name,db_group,self.level.window], function (req, results)
+                   
                    {         
                       if(results.rows.length == 0)
                       {  
@@ -48,9 +50,9 @@
                           var csv = new RGraph.CSV(url, function(csv)
                           {                                   
                                 var objData = self.dataHandl.parseData(csv);
-                                if (objData.label != undefined) 
+                                if (objData.dateTime.length != 0) 
                                 {        
-                                    if(objData.data[0].length < 100000)
+                                    if(objData.data[0].length < 50000)
                                     {
                                        var clone = self.splitData(objData, db_mask);
                                        self.clientsCallback(clone);                                       
@@ -64,7 +66,7 @@
                                                                      level = "' + self.level.window + '"', [], function (req, results)
                                            {         
                                                idDataSource = results.rows.item(0).id;                                               
-                                               self.columns = self.formTableColumns(objData.label);
+                                               self.columns = self.formTableColumns();
                                                req.executeSql('CREATE TABLE IF NOT EXISTS "' + idDataSource + '" (DateTime NOT NULL UNIQUE' + self.columns + ')');
                                                req.executeSql('CREATE INDEX IF NOT EXISTS DateTimeIndex ON "' + idDataSource + '" (DateTime)');  
                                                for (var p = 0; p < objData.dateTime.length; p++) 
@@ -102,17 +104,17 @@
                           var beginTime = self.dateHelper.splitTimeFromUnix(window.split('-')[0]);
                           var endTime = self.dateHelper.splitTimeFromUnix(window.split('-')[1]);   
                           
-                          beginTime = self.dataHandl.formatUnixData(beginTime, self.level.aggregator, self.level.level);
-                          endTime = self.dataHandl.formatUnixData(endTime, self.level.aggregator, self.level.level);
+                          //beginTime = self.dataHandl.formatUnixData(beginTime, self.level.aggregator, self.level.level);
+                          //endTime = self.dataHandl.formatUnixData(endTime, self.level.aggregator, self.level.level);
                           
                           self.db.transaction(function(req)
                           {      
-//                              req.executeSql('SELECT DateTime, PointData FROM "' + self.createTableName(idDataSource) + '" WHERE  (DateTime) <=  "' + endTime + '" AND \n\
+//                              req.executeSql('SELECT DateTime, PointData FROM "' + idDataSource + '" WHERE  (DateTime) <=  "' + endTime + '" AND \n\
 //                                                                                         (DateTime) >= "' + beginTime + '" AND (DateTime) LIKE "%' + self.level.aggregator + '%" ORDER BY DateTime', [],function(counter){ return function (req, res)
 //                              
 //                              
                               req.executeSql('SELECT * FROM "' + idDataSource + '" WHERE  (DateTime) <=  "' + endTime + '" AND \n\
-                                                                                         (DateTime) >= "' + beginTime + '" ORDER BY DateTime', [],function(counter){ return function (req, res)
+                                              (DateTime) >= "' + beginTime + '" ORDER BY DateTime', [],function(counter){ return function (req, res)
                               
                               
                               {            
@@ -122,8 +124,9 @@
                                         var dateTime = [];
                                         var labels = [];
                                                                                
-                                        self.dataHandl.concatRowData(res, dataBuffer, dateTime, labels);                                        
-                                        self.columns = self.formTableColumns(labels); 
+                                        self.dataHandl.concatRowData(res, dataBuffer, dateTime);                                        
+                                        self.columns = self.formTableColumns(); 
+                                        labels = self.formLabels();
                                         var returnedEndTime = (dateTime[dateTime.length - 1]);
                                         var returnedBeginTime = (dateTime[0]);
                                         
@@ -182,36 +185,27 @@
                                                                  [],
                                                                  function(objRightData)
                                                                  {
-                                                                     if(objRightData != null)
-                                                                     {
-                                                                        self.requestLeftData(db_server, 
-                                                                                             db_name, 
-                                                                                             db_group,                                                                                              
-                                                                                             needenTime2,
-                                                                                             self.level.window,
-                                                                                             idDataSource,
-                                                                                             dataBuffer,
-                                                                                             dateTime,
-                                                                                             function(objLeftData)
+                                                                    self.requestLeftData(db_server, 
+                                                                                         db_name, 
+                                                                                         db_group,                                                                                              
+                                                                                         needenTime2,
+                                                                                         self.level.window,
+                                                                                         idDataSource,
+                                                                                         dataBuffer,
+                                                                                         dateTime,
+                                                                                         function(objLeftData)
+                                                                                         {
+                                                                                             if(objLeftData != null && objRightData != null)
                                                                                              {
-                                                                                                 if(objLeftData != null)
-                                                                                                 {
-                                                                                                 objLeftData.data = objLeftData.data.concat(objRightData.data);
-                                                                                                 objLeftData.dateTime = objLeftData.dateTime.concat(objRightData.dateTime);
-                                                                                                 onEndCallBack(objLeftData);                                                                                                
-                                                                                                 }
-                                                                                                 else
-                                                                                                 {
-                                                                                                     onEndCallBack(null);
-                                                                                                     throw ('There is no data in server responses.');
-                                                                                                 }
-                                                                                             });      
-                                                                     }       
-                                                                     else
-                                                                     {
-                                                                         onEndCallBack(null);
-                                                                         throw ('There is no data in server responses.');
-                                                                     }
+                                                                                                objLeftData.data = objLeftData.data.concat(objRightData.data);
+                                                                                                objLeftData.dateTime = objLeftData.dateTime.concat(objRightData.dateTime);
+                                                                                                onEndCallBack(objLeftData);                                                                                                
+                                                                                             }
+                                                                                             else
+                                                                                             {
+                                                                                                 self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
+                                                                                             }
+                                                                                         });     
                                                                  });                                                                
                                         }
                                   }
@@ -222,8 +216,7 @@
                                                             db_group,                                                           
                                                             window,
                                                             self.level.window,
-                                                            idDataSource,
-                                                            onEndCallBack);                                       
+                                                            idDataSource);                                       
                                   }                                  
                               };}(counter));
                           },
@@ -266,7 +259,7 @@
             var csv = RGraph.CSV(url, function(csv)
             {  
                 var objData = self.dataHandl.parseData(csv);
-                if (objData.label != undefined) 
+                if (objData.dateTime.length != 0) 
                 { 
                     var clone = {};
                     clone.data = objData.data.slice(0);
@@ -290,12 +283,11 @@
                 }
                 else
                 {      
-                    onEndCallBack(null);            
-                    throw ('There is no data in server responces.');                                         
+                    onEndCallBack(null);
                 }    
             }); 
             
-        };
+        };     
                 
         me.splitData = function(objData)
         {
@@ -317,17 +309,47 @@
             return clone;            
         };
         
-        me.formTableColumns = function(labels)
+        me.formTableColumns = function()
         {
             var self = this;
             var db_mask = self.formDbMask(self.dataHandl.getDbServer(), self.dataHandl.getDbName(), self.dataHandl.getDbGroup());
             var columns = '';
             for(var i = 0; i < db_mask.length; i++)
             {
-                var formatLabel = labels[i].split(" ").join("");
-                columns = columns + ', ' +  formatLabel + db_mask[i];
+                //var formatLabel = labels[i].split(" ").join("_");
+                columns = columns + ', column' +  db_mask[i];
             }
             return columns;
+        };
+        
+        me.formLabels = function()
+        { 
+            var self = this;
+            var url = self.formURLList(self.dataHandl.getDbServer(), self.dataHandl.getDbName(), self.dataHandl.getDbGroup());
+            var responseXML = self.httpGet(url);
+            var items = responseXML.getElementsByTagName('Value');
+            var labels = [];
+
+            for(var i = 0; i < items.length; i++)
+            {
+                labels.push(items[i].getAttribute('name'));
+            } 
+            return labels;         
+        };
+        
+        me.formLabelList = function(db_server, db_name, db_group)
+        {
+            var self = this;
+            var url = self.formURLList(db_server, db_name, db_group);
+            var responseXML = self.httpGet(url);
+            var items = responseXML.getElementsByTagName('Value');
+            var labels = [];
+
+            for(var i = 0; i < items.length; i++)
+            {
+                labels.push(items[i].getAttribute('name'));
+            } 
+            return labels;
         };
         
         me.formValues = function(data, i)
@@ -356,7 +378,7 @@
             var csv = RGraph.CSV(url, function(csv)
             {                    
                 var objData = self.dataHandl.parseData(csv);
-                if (objData.label != undefined) 
+                if (objData.dateTime.length != 0) 
                 {   
                     var clone = {};
                     clone.data = objData.data.slice(0);
@@ -367,7 +389,7 @@
                     
                     for(var i = 0; i < objData.data.length; i++)
                     {
-                        objData[i].data = objData[i].data.concat(dataBuffer[i]);
+                        objData.data[i] = objData.data[i].concat(dataBuffer[i]);
                     }                    
                     objData.dateTime = objData.dateTime.concat(dateTime);
 
@@ -377,8 +399,7 @@
                 }
                 else
                 {      
-                    onEndCallBack(null);
-                    throw ('There is no data in server responces.');                                         
+                    onEndCallBack(null);                                                             
                 }    
              });               
         };
@@ -391,8 +412,7 @@
                                        db_group,                                       
                                        window,
                                        level,
-                                       idDataSource,
-                                       onEndCallBack)
+                                       idDataSource)
         {
             var self = this;
             var url = self.formURL(db_server, db_name, db_group, window, level);   
@@ -400,7 +420,7 @@
             var csv = RGraph.CSV(url, function(csv)
             {   
                 var objData = self.dataHandl.parseData(csv);
-                if (objData.label != undefined) 
+                if (objData.dateTime.length != 0) 
                 {   
                     var obj = self.splitData(objData);
                     self.clientsCallback(obj);                   
@@ -408,8 +428,7 @@
                 }
                 else
                 {      
-                    self.clientsCallback(null);                    
-                    throw ('There is no data in server responces.');                                         
+                    self.clientsCallback(null);              
                 }    
             });    
         };
@@ -426,11 +445,12 @@
         {            
             this.db.transaction(function (req)
             {
-                req.executeSql('CREATE TABLE IF NOT EXISTS DataSource (id INTEGER PRIMARY KEY AUTOINCREMENT,\n\
-                                                                         db_server,\n\
-                                                                         db_name,\n\
-                                                                         db_group,\n\
-                                                                         level)'); 
+//                req.executeSql('CREATE TABLE IF NOT EXISTS DataSource (id INTEGER PRIMARY KEY AUTOINCREMENT,\n\
+//                                                                         db_server,\n\
+//                                                                         db_name,\n\
+//                                                                         db_group,\n\
+//                                                                         level)'); 
+           req.executeSql('CREATE TABLE IF NOT EXISTS DataSource (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group,level)'); 
             }, 
             this.onError,
             this.onReadyTransaction);
@@ -443,7 +463,7 @@
                     {                        
                         for (var i = 0; i < objData.dateTime.length; i++) 
                         {                               
-                            req.executeSql('INSERT OR REPLACE INTO "' + idDataSource + '" (DateTime' + self.formTableColumns(objData.label) + ') ' + 'VALUES ' + '("' + objData.dateTime[i] + '"' + self.formValues(objData.data, i)+ ')', [], function(req,res)
+                            req.executeSql('INSERT OR REPLACE INTO "' + idDataSource + '" (DateTime' + self.formTableColumns() + ') ' + 'VALUES ' + '("' + objData.dateTime[i] + '"' + self.formValues(objData.data, i)+ ')', [], function(req,res)
                             {                                
                             });                                                
                         }  
@@ -474,7 +494,7 @@
         
         me.formURL = function(db_server, db_name, db_group, window, level)
         {
-            var url = 'http://localhost/ADEI/ADEIWS/services/getdata.php?db_server=' + db_server 
+            var url = 'http://ipecluster5.ipe.kit.edu/ADEI/ADEIWS/services/getdata.php?db_server=' + db_server 
                     + '&db_name=' + db_name
                     + '&db_group=' + db_group 
                     + '&db_mask=all' 
@@ -487,7 +507,7 @@
         
         me.formURLList = function(db_server, db_name, db_group)
         {
-            var url = 'http://localhost/ADEI/ADEIWS/services/list.php?db_server=' + db_server 
+            var url = 'http://ipecluster5.ipe.kit.edu/ADEI/ADEIWS/services/list.php?db_server=' + db_server 
                     + '&db_name=' + db_name
                     + '&db_group=' + db_group 
                     + '&target=items';  

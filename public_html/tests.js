@@ -19,14 +19,34 @@ module("class DataCacher");
 // 
  asyncTest("CheckChannelCount", 1 , function() { 	
         DataCacher = new dataCacher(); 
- 	DataCacher.getData("autogen", "hourly", "default", "all", "1363096123-1363355323", 70, function(data) 
-        {
-                  console.log(data);
+ 	DataCacher.getData("autogen", "hourly", "default", "all", "1363096123-1363355323", 12, function(data) 
+        {  
+            console.log(data);
                       ok(true, "Ok");  
                       start();
                  
  	});
  });
+//  asyncTest("CheckChannelCount", 1 , function() { 	
+//        DataCacher = new dataCacher(); 
+// 	DataCacher.getData("fastgen", "10hz", "default", "all", "1394028146-1395237746", 1000, function(data) 
+//        {  
+//            console.log(data);
+//                      ok(true, "Ok");  
+//                      start();
+//                 
+// 	});
+// });
+//  asyncTest("CheckChannelCount", 1 , function() { 	
+//        DataCacher = new dataCacher(); 
+// 	DataCacher.getData("temp0", "BakeOut2013", "TempMon", "all", "1355914844-1379156444", 70, function(data) 
+//        {
+//                  console.log(data);
+//                      ok(true, "Ok");  
+//                      start();
+//                 
+// 	});
+// });
 // 
 //  asyncTest("CheckChannelMinute", 1 , function() { 	
 //        DataCacher = new dataCacher();

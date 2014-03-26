@@ -22,9 +22,9 @@
                 var csv = new RGraph.CSV(url, function(csv)
                 {                                   
                       var objData = parseData(csv);
-                      if (objData.label != undefined) 
+                      if (objData.dateTime.length != 0) 
                       {       
-                          if(objData.data[0].length < 100000)
+                          if(objData.data[0].length < 5000)
                           {                                       
                              db.transaction(function(req)
                              {
@@ -67,7 +67,7 @@
                              });
                           }
                           else
-                          {
+                          {                              
                             
                           }
                       }
@@ -130,7 +130,7 @@
         
         function formURL(db_server, db_name, db_group, window, level)
         {
-            var url = 'http://localhost/ADEI/ADEIWS/services/getdata.php?db_server=' + db_server 
+            var url = 'http://ipecluster5.ipe.kit.edu/ADEI/ADEIWS/services/getdata.php?db_server=' + db_server 
                     + '&db_name=' + db_name
                     + '&db_group=' + db_group 
                     + '&db_mask=all' 

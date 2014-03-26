@@ -79,16 +79,14 @@
             return {data: data, dateTime: allData[0], label: labels};
         };
         
-        me.concatRowData = function(res, dataBuffer, dateTime, labels)
+        me.concatRowData = function(res, dataBuffer, dateTime)
         {  
               
             for(var property in res.rows.item(0))
             {
                 if(property != 'DateTime')
                 {
-                    dataBuffer.push([]);
-                    property = property.substring(0, property.length - 1);
-                    labels.push(property);
+                    dataBuffer.push([]);  
                 }
             }            
             for (var k = 0; k < res.rows.length; k++) 
