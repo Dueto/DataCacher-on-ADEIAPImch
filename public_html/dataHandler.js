@@ -24,15 +24,10 @@
                     
         me.Data = {data: [], dateTime: [], label: []};
         
-        me.currentItem = 0;
-        me.itemsCount = 0;
-        
-        me.clientsCallbackAll = '';
-        
-         me.startBackgroundCaching = function(db_mask, level)
+        me.startBackgroundCaching = function(level, tableColumns)
          {             
             var backCacher = new Worker('backgrDataCacher.js');
-            backCacher.postMessage(this.db_server + '<>' + this.db_name + '<>' + this.db_group + '<>' + db_mask + '<>' + this.window + '<>' + level);
+            backCacher.postMessage(this.db_server + '<>' + this.db_name + '<>' + this.db_group + '<>' + this.window + '<>' + this.getDataLevelForBackgr(level).window + '<>' + tableColumns);
           
          };
          
@@ -53,7 +48,7 @@
         {
             var numrows = csv.numrows;            
             var numcols = csv.numcols;            
-            var labels = csv.getRow(0)[1];   
+            var labels = csv.getRow(0,1);   
             var allData = new Array(numcols);
 
             for (i = 0; i < numcols; i++) 
@@ -75,16 +70,49 @@
 
                 }
             }
+            var data = [];
+            for(var i = 1; i < allData.length; i++)
+            {
+                data.push(allData[i]);
+            }
             
-            return {data: allData[1], dateTime: allData[0], label: labels};
+            return {data: data, dateTime: allData[0], label: labels};
         };
         
-        me.concatRowData = function(res, dataBuffer, dateTime)
-        {                                   
-            for (k = 0; k < res.rows.length; k++) 
-            {                                      
-                dataBuffer.push(res.rows.item(k).PointData);   
-                dateTime.push(res.rows.item(k).DateTime);                                       
+        me.concatRowData = function(res, dataBuffer, dateTime, labels)
+        {  
+              
+            for(var property in res.rows.item(0))
+            {
+                if(property != 'DateTime')
+                {
+                    dataBuffer.push([]);
+                    property = property.substring(0, property.length - 1);
+                    labels.push(property);
+                }
+            }            
+            for (var k = 0; k < res.rows.length; k++) 
+            { 
+                var i = 0;                  
+                for(var property in res.rows.item(k))
+                {
+                    if(res.rows.item(k).hasOwnProperty(property))
+                    {
+                        if(property == 'DateTime')
+                        {
+                            dateTime.push(res.rows.item(k).DateTime);
+                        }
+                        else
+                        {
+                            var data = res.rows.item(k)[property];
+                            dataBuffer[i].push(data);   
+                            i++;                      
+                        }
+                    }
+                    
+                }                 
+                
+                                                  
             } 
         };
         
@@ -170,44 +198,11 @@
             {
                 return dateTime;
             }
-        };
-        
-        me.concatData = function(objData)
-        {            
-            this.Data.dateTime = objData.dateTime;
-            this.Data.data.push(objData.data);
-            this.Data.label.push(objData.label);
-            this.currentItem++;
-            if(this.currentItem == this.itemsCount)
-            {
-                this.clientsCallbackAll(this.Data);
-                var mask = this.db_mask[0];
-                for (var i = 1; i < this.db_mask.length; i++)
-                {
-                   mask = mask + ',' + this.db_mask[i];
-                }
-                this.startBackgroundCaching(mask, this.getDataLevelForBackgr(this.level).window); 
-            }
-            
-            
-        };
-        
-        me.setItemsCount = function(count)
-        {
-            this.itemsCount = count;
-        };
-        
-        me.setClientsCallback = function(ClientsCallBack)
-        {
-            this.clientsCallbackAll = ClientsCallBack;
-        };
+        };        
         
         me.flushData = function()
         {
-            this.Data = {data: [], dateTime: [], label: []};        
-            this.currentItem = 0;
-            this.itemsCount = 0;        
-            this.clientsCallbackAll = '';
+            this.Data = {data: [], dateTime: [], label: []};      
             this.db_server = '';
             this.db_name = '';
             this.db_group = '';
@@ -235,6 +230,25 @@
             }
         };
         
+        me.getDbServer = function()
+        {
+            return this.db_server;
+        };
+        
+        me.getDbName = function()
+        {
+            return this.db_name;
+        };
+        
+        me.getDbGroup = function()
+        {
+            return this.db_group;
+        };
+        
+        me.getDbMask = function()
+        {
+            return this.db_mask;
+        };
         
         return me;
             

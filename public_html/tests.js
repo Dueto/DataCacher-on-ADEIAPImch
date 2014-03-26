@@ -18,22 +18,14 @@ module("class DataCacher");
 // });
 // 
  asyncTest("CheckChannelCount", 1 , function() { 	
-        DataCacher = new dataCacher();
-        var count = 0;
+        DataCacher = new dataCacher(); 
  	DataCacher.getData("autogen", "hourly", "default", "all", "1363096123-1363355323", 70, function(data) 
         {
                   console.log(data);
-                  count++;                  
-                  if(count == 6)
-                  {                      
                       ok(true, "Ok");  
                       start();
-                  }
- 	},
-        function(data)
-        {
-            console.log(data);
-        });
+                 
+ 	});
  });
 // 
 //  asyncTest("CheckChannelMinute", 1 , function() { 	
