@@ -27,19 +27,9 @@ module("class DataCacher");
 //
 // 	});
 // });
-//asyncTest("CheckChannelCount", 1, function() {
-//    DataCacher = new dataCacher();
-//    DataCacher.getData("autogen", "hourly", "default", "all", "1363096123-1363355323", 100, function(data)
-//    {
-//        console.log(data);
-//        ok(true, "Ok");
-//        start();
-//
-//    });
-//});
 asyncTest("CheckChannelCount", 1, function() {
     DataCacher = new dataCacher();
-    DataCacher.getData("fastgen", "10hz", "default", "all", "1393927947-1393935147", 1000, function(data)
+    DataCacher.getData("autogen", "hourly", "default", "all", "226688801-1205428001", 500, function(data)
     {
         console.log(data);
         ok(true, "Ok");
@@ -47,6 +37,16 @@ asyncTest("CheckChannelCount", 1, function() {
 
     });
 });
+//asyncTest("CheckChannelCount", 1, function() {
+//    DataCacher = new dataCacher();
+//    DataCacher.getData("fastgen", "10hz", "default", "all", "1393927947-1393935147", 1000, function(data)
+//    {
+//        console.log(data);
+//        ok(true, "Ok");
+//        start();
+//
+//    });
+//});
 //  asyncTest("CheckChannelCount", 1 , function() {
 //        DataCacher = new dataCacher();
 // 	DataCacher.getData("fastgen", "10hz", "default", "all", "1394028146-1395237746", 1000, function(data)

@@ -41,7 +41,6 @@ startBackgroundCaching = function(db_server,
                                 req.executeSql('CREATE INDEX IF NOT EXISTS DateTimeIndex ON "' + idDataSource + '" (DateTime)');
                                 for (var p = 0; p < objData.dateTime.length; p++)
                                 {
-                                    console.log(p);
                                     req.executeSql('INSERT OR REPLACE INTO "' + idDataSource + '" (DateTime ' + tableColumns + ') ' + 'VALUES ' + '("' + objData.dateTime[p] + '"' + formValues(objData.data, p) + ')');
                                 }
                             }
