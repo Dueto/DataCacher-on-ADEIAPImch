@@ -90,20 +90,20 @@ function onReadyWork()
 
 function onErrorWork(err)
 {
-    console.log(err.message);
+
     self.close();
 }
 
 function onReadyTransaction()
 {
-    console.log('Transaction completed.');
     //self.close();
 }
 ;
 
 function onError(err)
 {
-    console.log(err.message);
+    alert(err);
+
     self.close();
 }
 ;
@@ -158,17 +158,47 @@ function formURL(db_server, db_name, db_group, window, level)
 }
 ;
 
-function splitTimeFromAny(window)
+monthFormats = {
+    'Jan': 0,
+    'Feb': 1,
+    'Mar': 2,
+    'Apr': 3,
+    'May': 4,
+    'Jun': 5,
+    'Jul': 6,
+    'Aug': 7,
+    'Sep': 8,
+    'Oct': 9,
+    'Nov': 10,
+    'Dec': 11
+};
+
+splitTimeFromAny = function(window)
 {
     var Microsec = window.substr(19);
-    var d = new Date(window);
+    //window = window.substring(0, 18);
+    var year = window.substr(7, 2);
+    var month = window.substr(3, 3);
+    var day = window.substr(0, 2);
+    var hour = window.substr(10, 2);
+    var minute = window.substr(13, 2);
+    var sec = window.substr(16, 2);
+    if (year > 60)
+    {
+        year = '19' + year;
+    }
+    else
+    {
+        year = '20' + year;
+    }
+    var d = new Date(year, monthFormats[month], day, hour, minute, sec);
     var buf = d.toISOString().substr(13).substring(0, 7);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     var Time = d.toISOString().substring(0, 13);
     Time = Time + buf + Microsec;
     return Time;
-}
-;
+};
+
 
 function formValues(data, i)
 {

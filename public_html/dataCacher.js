@@ -11,6 +11,7 @@
         me.clientsCallback = '';
         me.level = '';
         me.columns = '';
+        me.isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
         me.getData = function(db_server,
                 db_name,
@@ -27,6 +28,7 @@
             self.dataHandl.setMaxLevel(self.formMaxLevel(db_server, db_name, db_group));
             self.dataHandl.setRequest(db_server, db_name, db_group, db_mask, window, pointCount);
             self.level = self.dataHandl.level;
+
             self.columns = self.formTableColumns();
             if (db_mask != 'all')
             {
@@ -40,10 +42,10 @@
             {
                 self.db.transaction(function(req)
                 {
-                    req.executeSql('SELECT * FROM DataSource WHERE db_server = "' + db_server + '" AND \n\
-                                                                  db_name = "' + db_name + '" AND \n\
-                                                                  db_group = "' + db_group + '" AND \n\
-                                                                    level = "' + self.level.window + '"', [], function(req, results)
+
+                    var sqlStatement = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) AND ((db_group="' + db_group + '") AND (level="' + self.level.window + '"))';
+                    ;
+                    req.executeSql(sqlStatement, [], function(req, results)
                     {
                         if (results.rows.length == 0)
                         {
@@ -57,44 +59,48 @@
                                     {
                                         var clone = self.splitData(objData);
                                         self.clientsCallback(clone);
-                                        /*self.db.transaction(function(req)
-                                         {
-                                         var idDataSource;
-                                         req.executeSql('INSERT OR REPLACE INTO DataSource \n\
-                                         (db_server, db_name, db_group, level ) VALUES ("'
-                                         + db_server
-                                         + '","' + db_name
-                                         + '","' + db_group
-                                         + '","' + self.level.window + '")');
-                                         req.executeSql('SELECT id FROM DataSource WHERE db_server = "' + db_server + '" \n\
-                                         AND db_name = "' + db_name + '" AND \n\
-                                         db_group = "' + db_group + '" AND \n\
-                                         level = "' + self.level.window + '"', [], function(req, results)
-                                         {
-                                         idDataSource = results.rows.item(0).id;
-                                         self.columns = self.formTableColumns();
-                                         req.executeSql('CREATE TABLE IF NOT EXISTS "' + idDataSource
-                                         + '" (DateTime NOT NULL UNIQUE' + self.columns + ')');
-                                         req.executeSql('CREATE INDEX IF NOT EXISTS DateTimeIndex ON "'
-                                         + idDataSource + '" (DateTime)');
+                                        if (!self.isFirefox)
+                                        {
+                                            self.dataHandl.startBackgroundCaching(self.level, self.columns);
+                                            self.dataHandl.startBackgroundCaching(self.dataHandl.getDataLevelForBackgr(self.level), self.columns);
+                                        }
+                                        else
+                                        {
+                                            /* self.db.transaction(function(req)
+                                             {
+                                             var idDataSource;
+                                             req.executeSql('INSERT OR REPLACE INTO DataSource \n\
+                                             (db_server, db_name, db_group, level ) VALUES ("'
+                                             + db_server
+                                             + '","' + db_name
+                                             + '","' + db_group
+                                             + '","' + self.level.window + '")');
+                                             req.executeSql('SELECT id FROM DataSource WHERE \n\
+                                             db_server = "' + db_server + '" AND \n\
+                                             db_name = "' + db_name + '" AND \n\
+                                             db_group = "' + db_group + '" AND \n\
+                                             level = "' + self.level.window + '"', [], function(req, results)
+                                             {
+                                             idDataSource = results.rows.item(0).id;
+                                             self.columns = self.formTableColumns();
+                                             req.executeSql('CREATE TABLE IF NOT EXISTS "' + idDataSource
+                                             + '" (DateTime NOT NULL UNIQUE' + self.columns + ')');
+                                             req.executeSql('CREATE INDEX IF NOT EXISTS DateTimeIndex ON "'
+                                             + idDataSource + '" (DateTime)');
 
-                                         for (var p = 0; p < objData.dateTime.length; p++)
-                                         {
-                                         req.executeSql('INSERT OR REPLACE INTO "'
-                                         + idDataSource
-                                         + '" (DateTime ' + self.columns + ') ' + 'VALUES '
-                                         + '("' + objData.dateTime[p] + '"'
-                                         + self.formValues(objData.data, p) + ')');
-                                         }
-
-
-                                         });
-                                         },
-                                         self.onError,
-                                         self.onEndOfWork.bind(self));*/
-                                        self.dataHandl.startBackgroundCaching(self.level, self.columns);
-                                        self.dataHandl.startBackgroundCaching(self.dataHandl.getDataLevelForBackgr(self.level), self.columns);
-
+                                             for (var p = 0; p < objData.dateTime.length; p++)
+                                             {
+                                             req.executeSql('INSERT OR REPLACE INTO "'
+                                             + idDataSource
+                                             + '" (DateTime ' + self.columns + ') ' + 'VALUES '
+                                             + '("' + objData.dateTime[p] + '"'
+                                             + self.formValues(objData.data, p) + ')');
+                                             }
+                                             });
+                                             },
+                                             self.onError,
+                                             self.onReadyTransaction);*/
+                                        }
                                     }
                                     else
                                     {
@@ -124,11 +130,9 @@
 
                             self.db.transaction(function(req)
                             {
-                                req.executeSql('SELECT * FROM "' + idDataSource + '" WHERE  (DateTime) <=  "' + endTime + '" \n\
-                                                        AND (DateTime) >= "' + beginTime + '" ORDER BY DateTime', [], function(counter) {
+                                var sqlStatement = 'SELECT * FROM "' + idDataSource + '" WHERE  (DateTime) <=  "' + endTime + '" AND (DateTime) >= "' + beginTime + '" ORDER BY DateTime';
+                                req.executeSql(sqlStatement, [], function(counter) {
                                     return function(req, res)
-
-
                                     {
                                         if (res.rows.length != 0)
                                         {
@@ -140,129 +144,132 @@
                                             self.dataHandl.concatRowData(res, dataBuffer, dateTime);
                                             labels = self.formLabels();
 
-                                            self.onEndOfWork();
-                                            self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
+                                            if (!self.isFirefox)
+                                            {
+                                                objData = {data: dataBuffer, dateTime: dateTime, label: labels};
+                                                var clone = self.splitData(objData);
+                                                self.dataHandl.startBackgroundCaching(self.dataHandl.getDataLevelForBackgr(self.level), self.columns);
+                                                self.clientsCallback(clone);
+                                            }
+                                            else
+                                            {
+                                                var returnedBeginTime = (dateTime[0]);
+                                                var returnedEndTime = (dateTime[dateTime.length - 1]);
 
-                                            /*var returnedBeginTime = (dateTime[0]);
-                                             var returnedEndTime = (dateTime[dateTime.length - 1]);
+                                                var formatedReturnedBeginTime = self.dataHandl.formatDate(returnedBeginTime);
+                                                var formatedReturnedEndTime = self.dataHandl.formatDate(returnedEndTime);
 
-                                             var formatedReturnedBeginTime = self.dataHandl.formatDate(returnedBeginTime);
-                                             var formatedReturnedEndTime = self.dataHandl.formatDate(returnedEndTime);
+                                                if (formatedBeginTime == formatedReturnedBeginTime
+                                                        && formatedEndTime == formatedReturnedEndTime)
+                                                {
+                                                    flag = true;
 
-                                             if (formatedBeginTime == formatedReturnedBeginTime
-                                             && formatedEndTime == formatedReturnedEndTime)
-                                             {
-                                             flag = true;
-                                             self.onEndOfWork();
-                                             self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
+                                                    self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
 
-                                             }
-                                             if (formatedReturnedBeginTime > formatedBeginTime
-                                             && formatedReturnedEndTime == formatedEndTime)
-                                             {
-                                             var b = Date.parse(beginTime) / 1000;
-                                             var e = Date.parse(returnedBeginTime) / 1000;
-                                             var needenTime = b + '-' + e;
+                                                }
+                                                if (formatedReturnedBeginTime > formatedBeginTime
+                                                        && formatedReturnedEndTime == formatedEndTime)
+                                                {
+                                                    var b = Date.parse(beginTime) / 1000;
+                                                    var e = Date.parse(returnedBeginTime) / 1000;
+                                                    var needenTime = b + '-' + e;
 
-                                             flag = true;
-                                             self.requestLeftData(db_server,
-                                             db_name,
-                                             db_group,
-                                             needenTime,
-                                             self.level.window,
-                                             idDataSource,
-                                             dataBuffer,
-                                             dateTime,
-                                             function(data)
-                                             {
-                                             if (data == null)
-                                             {
-                                             self.onEndOfWork.call(self);
-                                             self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
-                                             }
-                                             else
-                                             {
-                                             self.onEndOfWork.call(self);
-                                             self.clientsCallback(data);
-                                             }
-                                             });
-                                             }
-                                             if (formatedReturnedBeginTime == formatedBeginTime
-                                             && formatedReturnedEndTime < formatedEndTime)
-                                             {
-                                             var e = Date.parse(endTime) / 1000;
-                                             var b = Date.parse(returnedEndTime) / 1000;
-                                             var needenTime = b + '-' + e;
+                                                    flag = true;
+                                                    self.requestLeftData(db_server,
+                                                            db_name,
+                                                            db_group,
+                                                            needenTime,
+                                                            self.level.window,
+                                                            idDataSource,
+                                                            dataBuffer,
+                                                            dateTime,
+                                                            function(data)
+                                                            {
+                                                                if (data == null)
+                                                                {
+                                                                    self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
+                                                                }
+                                                                else
+                                                                {
+                                                                    self.clientsCallback(data);
+                                                                }
+                                                            });
+                                                }
+                                                if (formatedReturnedBeginTime == formatedBeginTime
+                                                        && formatedReturnedEndTime < formatedEndTime)
+                                                {
+                                                    var e = Date.parse(endTime) / 1000;
+                                                    var b = Date.parse(returnedEndTime) / 1000;
+                                                    var needenTime = b + '-' + e;
 
-                                             self.requestRightData(db_server,
-                                             db_name,
-                                             db_group,
-                                             needenTime,
-                                             self.level.window,
-                                             idDataSource,
-                                             dataBuffer,
-                                             dateTime,
-                                             function(data)
-                                             {
-                                             if (data == null)
-                                             {
-                                             self.onEndOfWork.call(self);
-                                             self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
-                                             }
-                                             else
-                                             {
-                                             self.onEndOfWork.call(self);
-                                             self.clientsCallback(data);
-                                             }
-                                             });
-                                             }
-                                             if (formatedBeginTime < formatedReturnedBeginTime
-                                             && formatedEndTime > formatedReturnedEndTime)
-                                             {
-                                             var e = Date.parse(returnedBeginTime) / 1000;
-                                             var b = Date.parse(returnedEndTime) / 1000;
+                                                    self.requestRightData(db_server,
+                                                            db_name,
+                                                            db_group,
+                                                            needenTime,
+                                                            self.level.window,
+                                                            idDataSource,
+                                                            dataBuffer,
+                                                            dateTime,
+                                                            function(data)
+                                                            {
+                                                                if (data == null)
+                                                                {
+                                                                    self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
+                                                                }
+                                                                else
+                                                                {
+                                                                    self.clientsCallback(data);
+                                                                }
+                                                            });
+                                                }
+                                                if (formatedBeginTime < formatedReturnedBeginTime
+                                                        && formatedEndTime > formatedReturnedEndTime)
+                                                {
+                                                    var e = Date.parse(returnedBeginTime) / 1000;
+                                                    var b = Date.parse(returnedEndTime) / 1000;
 
-                                             var needenTime1 = b + '-' + Date.parse(endTime) / 1000;
-                                             var needenTime2 = (Date.parse(beginTime) / 1000) + '-' + e;
+                                                    var needenTime1 = b + '-' + Date.parse(endTime) / 1000;
+                                                    var needenTime2 = (Date.parse(beginTime) / 1000) + '-' + e;
 
-                                             flag = true;
-                                             self.requestRightData(db_server,
-                                             db_name,
-                                             db_group,
-                                             needenTime1,
-                                             self.level.window,
-                                             idDataSource,
-                                             [],
-                                             [],
-                                             function(objRightData)
-                                             {
-                                             self.requestLeftData(db_server,
-                                             db_name,
-                                             db_group,
-                                             needenTime2,
-                                             self.level.window,
-                                             idDataSource,
-                                             dataBuffer,
-                                             dateTime,
-                                             function(objLeftData)
-                                             {
-                                             if (objLeftData != null && objRightData != null)
-                                             {
-                                             for (var i = 0; i < objLeftData.data.length; i++)
-                                             {
-                                             objLeftData.data[i] = objLeftData.data[i].concat(objRightData.data[i]);
-                                             }
-                                             objLeftData.dateTime = objLeftData.dateTime.concat(objRightData.dateTime);
-                                             self.onEndOfWork.call(self);
-                                             self.clientsCallback(objLeftData);
-                                             }
-                                             else
-                                             {
-                                             self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
-                                             }
-                                             });
-                                             });
-                                             }*/
+                                                    flag = true;
+                                                    self.requestRightData(db_server,
+                                                            db_name,
+                                                            db_group,
+                                                            needenTime1,
+                                                            self.level.window,
+                                                            idDataSource,
+                                                            [],
+                                                            [],
+                                                            function(objRightData)
+                                                            {
+                                                                self.requestLeftData(db_server,
+                                                                        db_name,
+                                                                        db_group,
+                                                                        needenTime2,
+                                                                        self.level.window,
+                                                                        idDataSource,
+                                                                        dataBuffer,
+                                                                        dateTime,
+                                                                        function(objLeftData)
+                                                                        {
+                                                                            if (objLeftData != null && objRightData != null)
+                                                                            {
+                                                                                for (var i = 0; i < objLeftData.data.length; i++)
+                                                                                {
+                                                                                    objLeftData.data[i] = objLeftData.data[i].concat(objRightData.data[i]);
+                                                                                }
+                                                                                objLeftData.dateTime = objLeftData.dateTime.concat(objRightData.dateTime);
+                                                                                self.clientsCallback(objLeftData);
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
+                                                                            }
+                                                                        });
+                                                            });
+                                                }
+
+                                            }
                                         }
                                         else
                                         {
@@ -283,21 +290,16 @@
 
                         }
 
-                    });
-                },
-                        self.onError,
+                    },
+                            self.onErrorSql);
+
+                }, self.onError,
                         self.onReadyTransaction);
             }
             else
             {
                 console.log('Bad window format.');
             }
-        };
-
-
-        me.onEndOfWork = function()
-        {
-            this.dataHandl.startBackgroundCaching(this.level, this.columns);
         };
 
         me.requestRightData = function(db_server,
@@ -351,7 +353,7 @@
             var db_mask = self.dataHandl.getDbMask().split(',');
             if (db_mask == 'all')
             {
-                var db_mask = self.formDbMask(self.dataHandl.getDbServer(), self.dataHandl.getDbName(), self.dataHandl.getDbGroup());
+                return objData;
             }
             var clone = {};
             clone.data = [];
@@ -479,7 +481,6 @@
                 if (objData.dateTime.length != 0)
                 {
                     var obj = self.splitData(objData);
-                    self.onEndOfWork.call(self);
                     self.clientsCallback(obj);
                     self.insertData(objData, idDataSource);
                 }
@@ -503,7 +504,10 @@
             this.db.transaction(function(req)
             {
                 req.executeSql('CREATE TABLE IF NOT EXISTS DataSource \n\
-                                (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group,level)');
+                                (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group, level)', [],
+                        function(res, rows) {
+                        },
+                        this.onErrorSql);
             },
                     this.onError,
                     this.onReadyTransaction);
@@ -516,9 +520,10 @@
             {
                 for (var i = 0; i < objData.dateTime.length; i++)
                 {
-
-                    req.executeSql('INSERT OR REPLACE INTO "' + idDataSource + '" (DateTime' + self.columns + ') '
-                            + 'VALUES ' + '("' + objData.dateTime[i] + '"' + self.formValues(objData.data, i) + ')');
+                    var sqlStatement = 'INSERT OR REPLACE INTO "' + idDataSource + '" (DateTime' + self.columns + ') '
+                            + 'VALUES ' + '("' + objData.dateTime[i] + '"' + self.formValues(objData.data, i) + ')';
+                    req.executeSql(sqlStatement, [], function(res, rows) {
+                    }, self.onErrorSql);
                 }
             },
                     self.onError,
@@ -535,9 +540,9 @@
             console.log(err);
         };
 
-        me.onErrorSql = function(err)
+        me.onErrorSql = function(asd, err)
         {
-            console.log(err);
+            console.log(err.toString());
         };
 
         me.onReadySql = function()

@@ -71,7 +71,7 @@
 
         me.startBackgroundCaching = function(level, tableColumns)
         {
-            if (this.maxlevel != level.window)
+            if (this.maxlevel < level.window)
             {
                 var backCacher = new Worker('backgrDataCacher.js');
                 backCacher.postMessage(this.db_server + '<>' + this.db_name + '<>' + this.db_group + '<>' + this.window + '<>' + level.window + '<>' + tableColumns);
