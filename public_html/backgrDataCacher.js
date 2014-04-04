@@ -5,7 +5,7 @@ importScripts('RGraph.common.csv.js');
 self.addEventListener('message', function(e)
 {
     var data = e.data.split('<>');
-    startBackgroundCaching(data[0], data[1], data[2], data[3], data[4], data[5]);
+    startBackgroundCaching(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]);
 });
 
 startBackgroundCaching = function(db_server,
@@ -13,7 +13,10 @@ startBackgroundCaching = function(db_server,
         db_group,
         window,
         level,
-        tableColumns)
+        tableColumns,
+        maxLevel,
+        db_items,
+        labels)
 {
     var db = openDatabase('DB', '1.0', '', 50 * 1024 * 1024);
     db.transaction(function(req)
@@ -24,7 +27,7 @@ startBackgroundCaching = function(db_server,
             var objData = parseData(csv);
             if (objData.dateTime.length != 0)
             {
-                if (objData.data[0].length < 10000)
+                if (objData.data[0].length < 200000)
                 {
                     db.transaction(function(req)
                     {
@@ -46,7 +49,7 @@ startBackgroundCaching = function(db_server,
                             }
                             else
                             {
-                                req.executeSql('INSERT OR REPLACE INTO DataSource (db_server, db_name, db_group, level ) VALUES ("' + db_server + '","' + db_name + '","' + db_group + '","' + level + '")');
+                                req.executeSql('INSERT OR REPLACE INTO DataSource (db_server, db_name, db_group, level, db_items, maxlevel, labels) VALUES ("' + db_server + '","' + db_name + '","' + db_group + '","' + level + '","' + db_items + '","' + maxLevel + '","' + labels + '")');
                                 req.executeSql('SELECT id FROM DataSource WHERE db_server = "' + db_server + '" AND \n\
                                                            db_name = "' + db_name + '" AND \n\
                                                            db_group = "' + db_group + '" AND \n\

@@ -11,6 +11,7 @@
         me.clientsCallback = '';
         me.level = '';
         me.columns = '';
+        me.db_items = '';
         me.isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
         me.getData = function(db_server,
@@ -22,22 +23,84 @@
                 onEndCallBack)
         {
             var self = this;
+
             self.clientsCallback = onEndCallBack;
-
-            self.dataHandl.flushData();
-            self.dataHandl.setMaxLevel(self.formMaxLevel(db_server, db_name, db_group));
-            self.dataHandl.setRequest(db_server, db_name, db_group, db_mask, window, pointCount);
-            self.level = self.dataHandl.level;
-
-            self.columns = self.formTableColumns();
-            if (db_mask != 'all')
+            if (self.dataHandl.isPriviousRequest())
             {
-                db_mask = db_mask.split(',');
+                if (db_mask != 'all')
+                {
+                    self.db_items = db_mask.split(',');
+                }
+                else
+                {
+                    self.db_items = self.dataHandl.getDbMask();
+                }
+                self.dataHandl.setRequest(window, pointCount);
+                self.level = self.dataHandl.level;
+                self.columns = self.formTableColumns();
+
+                self.onReadyFormingRequest(db_server, db_name, db_group, window);
             }
             else
             {
-                db_mask = self.formDbMask(db_server, db_name, db_group);
+                self.db.transaction(function(req)
+                {
+                    var sql = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) AND ((db_group="' + db_group + '"))'
+                    req.executeSql(sql, [], function(req, results)
+                    {
+                        if (results.rows.length == 0)
+                        {
+                            if (db_mask != 'all')
+                            {
+                                self.db_items = db_mask.split(',');
+                                db_mask = self.formDbMask(db_server, db_name, db_group);
+                            }
+                            else
+                            {
+                                db_mask = self.formDbMask(db_server, db_name, db_group);
+                                self.db_items = db_mask;
+                            }
+
+                            self.dataHandl.setLabels(self.formLabels());
+                            self.dataHandl.setMaxLevel(self.formMaxLevel(db_server, db_name, db_group));
+                            self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
+
+                            self.level = self.dataHandl.level;
+                            self.columns = self.formTableColumns();
+
+                            self.onReadyFormingRequest(db_server, db_name, db_group, window);
+                        }
+                        else
+                        {
+                            if (db_mask != 'all')
+                            {
+                                self.db_items = db_mask.split(',');
+                                db_mask = results.rows.item(0).db_items.split(',');
+                            }
+                            else
+                            {
+                                db_mask = results.rows.item(0).db_items.split(',');
+                                self.db_items = db_mask;
+                            }
+
+                            self.dataHandl.setLabels(results.rows.item(0).labels.split(','));
+                            self.dataHandl.setMaxLevel(results.rows.item(0).maxlevel);
+                            self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
+
+
+                            self.level = self.dataHandl.level;
+                            self.columns = self.formTableColumns();
+
+                            self.onReadyFormingRequest(db_server, db_name, db_group, window);
+                        }
+                    });
+                });
             }
+        };
+
+        me.onReadyFormingRequest = function(db_server, db_name, db_group, window)
+        {
+            var self = this;
             if (self.dateHelper.checkWindowFormat(window))
             {
                 self.db.transaction(function(req)
@@ -55,7 +118,7 @@
                                 var objData = self.dataHandl.parseData(csv);
                                 if (objData.dateTime.length != 0)
                                 {
-                                    if (objData.data[0].length < 10000)
+                                    if (objData.data[0].length < 20000)
                                     {
                                         var clone = self.splitData(objData);
                                         self.clientsCallback(clone);
@@ -142,7 +205,7 @@
                                             var flag = false;
 
                                             self.dataHandl.concatRowData(res, dataBuffer, dateTime);
-                                            labels = self.formLabels();
+                                            labels = self.dataHandl.getLabels();
 
                                             if (!self.isFirefox)
                                             {
@@ -350,8 +413,7 @@
         me.splitData = function(objData)
         {
             var self = this;
-            var db_mask = self.dataHandl.getDbMask().split(',');
-            if (db_mask == 'all')
+            if (self.db_items == self.dataHandl.getDbMask())
             {
                 return objData;
             }
@@ -359,10 +421,10 @@
             clone.data = [];
             clone.dateTime = objData.dateTime;
             clone.label = [];
-            for (var i = 0; i < db_mask.length; i++)
+            for (var i = 0; i < self.db_items.length; i++)
             {
-                clone.data.push(objData.data[db_mask[i]]);
-                clone.label.push(objData.label[db_mask[i]]);
+                clone.data.push(objData.data[self.db_items[i]]);
+                clone.label.push(objData.label[self.db_items[i]]);
             }
             return clone;
         };
@@ -370,7 +432,7 @@
         me.formTableColumns = function()
         {
             var self = this;
-            var db_mask = self.formDbMask(self.dataHandl.getDbServer(), self.dataHandl.getDbName(), self.dataHandl.getDbGroup());
+            var db_mask = self.dataHandl.getDbMask();
             var columns = '';
             for (var i = 0; i < db_mask.length; i++)
             {
@@ -504,7 +566,7 @@
             this.db.transaction(function(req)
             {
                 req.executeSql('CREATE TABLE IF NOT EXISTS DataSource \n\
-                                (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group, level)', [],
+                                (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group, level, db_items, maxlevel, labels)', [],
                         function(res, rows) {
                         },
                         this.onErrorSql);
@@ -532,7 +594,7 @@
 
         me.onReadyTransaction = function()
         {
-            console.log('Transaction completed.');
+            // console.log('Transaction completed.');
         };
 
         me.onError = function(err)

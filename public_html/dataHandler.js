@@ -14,7 +14,7 @@
         me.pointCount = '';
         me.level = '';
         me.maxlevel = '';
-
+        me.labels = '';
 
         me.dataLevel = [{level: 'Year', aggregator: '-01-01T00:00:00.000000', window: 31536000},
             {level: 'HalfYear', aggregator: '-01T00:00:00.000000', window: 17064000},
@@ -73,12 +73,20 @@
         {
             if (this.maxlevel < level.window)
             {
+                var db_items = this.db_mask[0];
+                var labels = this.labels[0];
+                for (var i = 1; i < this.db_mask.length; i++)
+                {
+                    db_items = db_items + ',' + this.db_mask[i];
+                    labels = labels + ',' + this.labels[i];
+
+                }
                 var backCacher = new Worker('backgrDataCacher.js');
-                backCacher.postMessage(this.db_server + '<>' + this.db_name + '<>' + this.db_group + '<>' + this.window + '<>' + level.window + '<>' + tableColumns);
+                backCacher.postMessage(this.db_server + '<>' + this.db_name + '<>' + this.db_group + '<>' + this.window + '<>' + level.window + '<>' + tableColumns + '<>' + this.maxlevel + '<>' + db_items + '<>' + labels);
             }
         };
 
-        me.setRequest = function(db_server, db_name, db_group, db_mask, window, pointCount)
+        me.setNewRequest = function(db_server, db_name, db_group, db_mask, window, pointCount)
         {
             this.db_server = db_server;
             this.db_name = db_name;
@@ -98,7 +106,36 @@
                     }
                 }
             }
-            this.itemsCount = this.db_mask.length;
+        };
+
+        me.setRequest = function(window, pointCount)
+        {
+            this.window = window;
+            this.pointCount = pointCount;
+
+            this.level = this.getDataLevel(this.pointCount, this.window);
+            if (this.level.window < this.maxlevel)
+            {
+                for (var i = 0; i < this.dataLevel.length; i++)
+                {
+                    if (this.maxlevel <= this.dataLevel[i].window && this.maxlevel > this.dataLevel[i + 1].window)
+                    {
+                        this.level = this.dataLevel[i];
+                    }
+                }
+            }
+        };
+
+        me.isPriviousRequest = function(db_server, db_name, db_group)
+        {
+            if (this.db_server == db_server && this.db_name == db_name && this.db_group == db_group)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         };
 
         me.parseData = function(csv)
@@ -138,33 +175,24 @@
 
         me.concatRowData = function(res, dataBuffer, dateTime)
         {
-
-            for (var property in res.rows.item(0))
+            var properties = Object.keys(res.rows.item(0))
+            for (var j = 0; j < properties.length - 1; j++)
             {
-                if (property != 'DateTime')
-                {
-                    dataBuffer.push([]);
-                }
+                dataBuffer.push([]);
             }
             for (var k = 0; k < res.rows.length; k++)
             {
-                var i = 0;
-                for (var property in res.rows.item(k))
+                for (var i = 0; i < properties.length; i++)
                 {
-                    if (res.rows.item(k).hasOwnProperty(property))
+                    if (properties[i] == 'DateTime')
                     {
-                        if (property == 'DateTime')
-                        {
-                            dateTime.push(res.rows.item(k).DateTime);
-                        }
-                        else
-                        {
-                            var data = res.rows.item(k)[property];
-                            dataBuffer[i].push(data);
-                            i++;
-                        }
+                        dateTime.push(res.rows.item(k).DateTime);
                     }
-
+                    else
+                    {
+                        var data = res.rows.item(k)[properties[i]];
+                        dataBuffer[i - 1].push(data);
+                    }
                 }
 
 
@@ -242,18 +270,6 @@
             return date.substr(0, date.length - this.level.aggregator.length);
         };
 
-        me.flushData = function()
-        {
-            this.db_server = '';
-            this.db_name = '';
-            this.db_group = '';
-            this.db_mask = '';
-            this.window = '';
-            this.pointCount = '';
-            this.level = '';
-            this.maxlevel = '';
-        };
-
         me.getDataLevelForBackgr = function(level)
         {
             for (var i = 0; i < this.dataLevel.length; i++)
@@ -292,10 +308,22 @@
             return this.db_mask;
         };
 
+        me.getLabels = function()
+        {
+            return this.labels;
+        };
+
         me.setMaxLevel = function(maxlevel)
         {
             this.maxlevel = maxlevel;
         };
+
+        me.setLabels = function(labels)
+        {
+            this.labels = labels;
+        };
+
+
 
         return me;
 
